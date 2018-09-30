@@ -11,13 +11,13 @@ namespace glove {
 
 Glove_USB::Glove_USB(string com, int baudrate) {
 
-	Serial serial(com, baudrate, 8, 'N', 1);
-	serial_ = &serial;
+	serial_ = new  Serial(com, baudrate, 8, 'N', 1);
 }
 
 Glove_Ret Glove_USB::glove_usb_open(void)
 {
-	serial_->Open();
+	if(serial_->Open())
+		return USB_OPEN_ERROR;
 	return RETURN_OK;
 }
 
@@ -25,12 +25,16 @@ Glove_Ret Glove_USB::glove_usb_open(void)
 Glove_Ret Glove_USB::glove_usb_read(string& data, int size)
 {
 	bool ret;
+	char answer;
 
+	//data.clear();
 	for(;size>0;size--)
 	{
-		data.append((const char*)serial_->ReadChar(ret));
+		answer = serial_->ReadChar(ret);
 		if(ret == false)
 			return USB_READ_DATA_ERROR;
+		data.append(&answer);
+
 	}
 
 	return RETURN_OK;

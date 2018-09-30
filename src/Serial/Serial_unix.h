@@ -31,13 +31,11 @@ inline void delay(unsigned long ms)
 }
 
 class Serial {
-	char rxchar;
-	string port;
-	long baud;
-	long dsize;
-	char parity;
-	float stopbits;
-	long fd;//serial_fd
+
+private:
+	termios getTermios();
+
+
 public:
 	Serial();
 	Serial(string Device, long BaudRate, long DataSize, char ParityType, float NStopBits);

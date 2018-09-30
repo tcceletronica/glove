@@ -9,12 +9,16 @@
 
 namespace glove {
 
-Glove_USB * device_;
-
 Glove_Comm::Glove_Comm(string comm_port)
 {
-	Glove_USB device(comm_port, 115200);
-	device_ = &device;
+	device_ = new Glove_USB(comm_port, 115200);
+
+	Glove_Ret ret = device_->glove_usb_open();
+
+	if (ret)
+	{
+		cout << "bu";
+	}
 }
 
 Glove_Ret Glove_Comm::glove_package_send(string ID, string Payload, int size)
@@ -35,24 +39,21 @@ Glove_Ret Glove_Comm::glove_package_send(string ID, string Payload, int size)
 
 Glove_Ret Glove_Comm::glove_package_decode(string data, string ID, void * content)
 {
-	char* ID_REF = NULL;
 	char* pch;
-	sprintf(ID_REF, "POS");
-	if(ID.c_str() == ID_REF)
+	if(!ID.compare("POS"))
 	{
 		Pose * position = (Pose *) content;
 		pch = strtok((char *)data.c_str(),";");
 		position->x = atoi(pch);
-		pch = strtok(pch,";");
+		pch = strtok(NULL,";");
 		position->y = atoi(pch);
-		pch = strtok(pch,";");
+		pch = strtok(NULL,";");
 		position->z = atoi(pch);
 
 		return RETURN_OK;
 
 	}
-	sprintf(ID_REF, "ANG");
-	if(ID.c_str() == ID_REF)
+	if(!ID.compare("ANG"))
 	{
 		Rot * rotation = (Rot *) content;
 		pch = strtok((char *)data.c_str(),";");
@@ -65,8 +66,7 @@ Glove_Ret Glove_Comm::glove_package_decode(string data, string ID, void * conten
 		return RETURN_OK;
 
 	}
-	sprintf(ID_REF, "STM");
-	if(ID.c_str() == ID_REF)
+	if(!ID.compare("STM"))
 	{
 		bool * result = (bool*) content;
 		if(data == "true")
@@ -76,8 +76,7 @@ Glove_Ret Glove_Comm::glove_package_decode(string data, string ID, void * conten
 
 		return RETURN_OK;
 	}
-	sprintf(ID_REF, "FNG");
-	if(ID.c_str() == ID_REF)
+	if(!ID.compare("FNG"))
 	{
 		Fingers * hand = (Fingers *) content;
 		pch = strtok((char *)data.c_str(),";");
@@ -100,13 +99,17 @@ Glove_Ret Glove_Comm::glove_package_decode(string data, string ID, void * conten
 
 Glove_Ret Glove_Comm::glove_package_receive(string ID, void * content)
 {
-
-	string payload = NULL;
-	string size_str = NULL;
-	string ID_rec = NULL;
-	string buffer = NULL;
+	string payload;
+	string size_str;
+	string ID_rec;
+	string buffer;
 	int size = 1;
 	size_t start = 0, end = 0, aux = 0;
+
+	payload.clear();
+	size_str.clear();
+	ID_rec.clear();
+	buffer.clear();
 
 	do
 	{
@@ -115,6 +118,8 @@ Glove_Ret Glove_Comm::glove_package_receive(string ID, void * content)
 			device_->glove_usb_read(buffer,size);
 			start = buffer.find(SOH);
 		}while(start==string::npos);
+
+		start++;
 
 		do
 		{
@@ -130,7 +135,7 @@ Glove_Ret Glove_Comm::glove_package_receive(string ID, void * content)
 	aux = aux - (start + 3);
 	size_str = buffer.substr((start + 3), aux);
 	size = atoi(size_str.c_str());
-	aux = buffer.find(STX);
+	aux = buffer.find(STX) +1;
 	payload = buffer.substr(aux, (end-aux));
 
 	return glove_package_decode(payload, ID_rec, content);
@@ -140,12 +145,12 @@ Glove_Ret Glove_Comm::glove_package_receive(string ID, void * content)
 Glove_Ret Glove_Comm::glove_get_position(int* x, int* y, int* z)
 {
 	Glove_Ret ret = RETURN_OK;
-	Pose * position = {0};
-	ret = glove_package_receive("POS", position);
+	Pose position = {0};
+	ret = glove_package_receive("POS", &position);
 
-	(*x) = position->x;
-	(*y) = position->y;
-	(*z) = position->z;
+	(*x) = position.x;
+	(*y) = position.y;
+	(*z) = position.z;
 
 	return ret;
 }
@@ -153,12 +158,12 @@ Glove_Ret Glove_Comm::glove_get_position(int* x, int* y, int* z)
 Glove_Ret Glove_Comm::glove_get_accel(int* roll, int* pitch, int* yaw)
 {
 	Glove_Ret ret = RETURN_OK;
-	Rot * rotation = {0};
-	ret = glove_package_receive("ANG", rotation);
+	Rot rotation = {0};
+	ret = glove_package_receive("ANG", &rotation);
 
-	(*roll) = rotation->roll;
-	(*pitch) = rotation->pitch;
-	(*yaw) = rotation->yaw;
+	(*roll) =  rotation.roll;
+	(*pitch) = rotation.pitch;
+	(*yaw) =   rotation.yaw;
 
 	return ret;
 }
@@ -166,14 +171,14 @@ Glove_Ret Glove_Comm::glove_get_accel(int* roll, int* pitch, int* yaw)
 Glove_Ret Glove_Comm::glove_get_flex(int* fng1, int* fng2, int* fng3, int* fng4, int* fng5)
 {
 	Glove_Ret ret = RETURN_OK;
-	Fingers * hand = {0};
-	ret = glove_package_receive("FNG", hand);
+	Fingers hand = {0};
+	ret = glove_package_receive("FNG", &hand);
 
-	(*fng1) = hand->fng1;
-	(*fng2) = hand->fng2;
-	(*fng3) = hand->fng3;
-	(*fng4) = hand->fng4;
-	(*fng5) = hand->fng5;
+	(*fng1) = hand.fng1;
+	(*fng2) = hand.fng2;
+	(*fng3) = hand.fng3;
+	(*fng4) = hand.fng4;
+	(*fng5) = hand.fng5;
 
 	return ret;
 }
@@ -197,6 +202,7 @@ Glove_Ret Glove_Comm::glove_startup()
 }
 
 Glove_Comm::~Glove_Comm() {
+	device_->glove_usb_close();
 	// TODO Auto-generated destructor stub
 }
 

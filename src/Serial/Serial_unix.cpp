@@ -11,6 +11,14 @@
 
 namespace glove {
 
+char rxchar;
+string port;
+long baud;
+long dsize;
+char parity;
+float stopbits;
+long fd;//serial_fd
+
 Serial::Serial()
 {
 	fd = -1;
@@ -24,7 +32,7 @@ Serial::Serial()
 Serial::Serial(string Device, long BaudRate,long DataSize,char ParityType,float NStopBits)
 {
 	fd = -1;
-	port = Device;
+	SetPort(Device);
 	SetBaudRate(BaudRate);
 	SetDataSize(DataSize);
 	SetParity(ParityType);
@@ -34,6 +42,23 @@ Serial::Serial(string Device, long BaudRate,long DataSize,char ParityType,float 
 Serial::~Serial()
 {
 	Close();
+}
+
+termios Serial::getTermios(){
+
+	if(fd == -1)
+		printf("\n error while opening port \n");
+
+	struct termios tty;
+	memset(&tty, 0, sizeof(tty));
+
+	// Get current settings (will be stored in termios structure)
+	if(tcgetattr(fd, &tty) != 0)
+	{
+		printf("\n error while opening port \n");
+	}
+
+	return tty;
 }
 
 void Serial::SetPort(string Device) {
@@ -77,38 +102,46 @@ float Serial::GetStopBits() {
 //-----------------------------------------------------------------------------
 long Serial::Open(void) {
 
-	struct termios settings;
-	memset(&settings, 0, sizeof(settings));
-	settings.c_iflag = 0;
-	settings.c_oflag = 0;
-
-	settings.c_cflag = CREAD | CLOCAL;//see termios.h for more information
-	if(dsize==5)  settings.c_cflag |= CS5;//no change
-	else if (dsize == 6)  settings.c_cflag |= CS6;
-	else if (dsize == 7)  settings.c_cflag |= CS7;
-	else settings.c_cflag |= CS8;
-
-	if(stopbits==2) settings.c_cflag |= CSTOPB;
-
-	if(parity!='N') settings.c_cflag |= PARENB;
-
-	if (parity == 'O') settings.c_cflag |= PARODD;
-
-	settings.c_lflag = 0;
-	settings.c_cc[VMIN] = 1;
-	settings.c_cc[VTIME] = 0;
-
-	fd = open(port.c_str(), O_RDWR | O_NONBLOCK);
+	fd = open(port.c_str(), O_RDWR);
 	if (fd == -1) {
 		return -1;
 	}
+
+	termios settings = getTermios();
+
+	//settings.c_iflag = 0;
+	//settings.c_oflag = 0;
+
+	settings.c_cflag     &=  ~PARENB;       	// No parity bit is added to the output characters
+	settings.c_cflag     &=  ~CSTOPB;		// Only one stop-bit is used
+	settings.c_cflag     &=  ~CSIZE;			// CSIZE is a mask for the number of bits per character
+	settings.c_cflag     |=  CS8;			// Set to 8 bits per character
+	settings.c_cflag     &=  ~CRTSCTS;       // Disable hardware flow control (RTS/CTS)
+	settings.c_cflag     |=  CREAD | CLOCAL;     				// Turn on READ & ignore ctrl lines (CLOCAL = 1)
+
+	settings.c_cc[VTIME] = 0;
+	settings.c_cc[VMIN] = 0;
+
 	cfsetospeed(&settings, baud);
 	cfsetispeed(&settings, baud);
 
-	tcsetattr(fd, TCSANOW, &settings);
+	settings.c_oflag     =   0;              // No remapping, no delays
+	settings.c_oflag     &=  ~OPOST;			// Make raw
 
-	int flags = fcntl(fd, F_GETFL, 0);
-	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	settings.c_iflag     &= ~(IXON | IXOFF | IXANY);			// Turn off s/w flow ctrl
+	settings.c_iflag 	&= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
+
+
+	// Canonical input is when read waits for EOL or EOF characters before returning. In non-canonical mode, the rate at which
+	// read() returns is instead controlled by c_cc[VMIN] and c_cc[VTIME]
+	settings.c_lflag		&= ~ICANON;								// Turn off canonical input, which is suitable for pass-through
+	//settings.c_lflag & ~(ECHO);	// Configure echo depending on echo_ boolean
+	settings.c_lflag		&= ~ECHOE;								// Turn off echo erase (echo erase only relevant if canonical input is active)
+	settings.c_lflag		&= ~ECHONL;								//
+	settings.c_lflag		&= ~ISIG;								// Disables recognition of INTR (interrupt), QUIT and SUSP (suspend) characters
+
+
+	tcsetattr(fd, TCSANOW, &settings);
 
 	return 0;
 }
@@ -175,8 +208,11 @@ char Serial::ReadChar(bool& success)
 
 	success=false;
 	if (!IsOpened()) {return 0;	}
-	success=read(fd, &rxchar, 1)==1;
-	return rxchar;
+	success=read(fd, &rxchar, 1);
+	if(success==1)
+		return rxchar;
+	else
+		return -1;
 }
 
 bool Serial::Write(char *data)
@@ -200,7 +236,7 @@ void Serial::Flush()
 {
 	tcflush(fd, TCIOFLUSH);
 }
-	//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 bool Serial::SetRTS(bool value) {
 	long RTS_flag = TIOCM_RTS;
 	bool success=true;

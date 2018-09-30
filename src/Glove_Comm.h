@@ -13,12 +13,17 @@
 #include "Glove_USB.h"
 #include "Glove_Errors.h"
 
-#define SOH '\x01'
+//#define SOH '\x01'
+//#define EOT '\x04'
+//#define ACK '\x06'
+//#define NAK '\x15'
+//#define STX '\x02'
+//#define ETX '\x03'
+
+#define SOH '#'
 #define EOT '\x04'
-#define ACK '\x06'
-#define NAK '\x15'
-#define STX '\x02'
-#define ETX '\x03'
+#define STX '$'
+#define ETX '&'
 
 namespace glove {
 
@@ -94,11 +99,13 @@ public:
 
 	Glove_Ret glove_startup();
 
-private:
-
 	Glove_Ret glove_package_receive(string ID, void * content);
 	Glove_Ret glove_package_send(string ID, string Payload, int size);
 	Glove_Ret glove_package_decode(string data, string ID, void * content);
+
+private:
+
+	Glove_USB * device_;
 
 };
 
