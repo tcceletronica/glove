@@ -217,6 +217,7 @@ char Serial::ReadChar(bool& success)
 
 bool Serial::Write(char *data)
 {
+	printf("dado a ser mostrado %s, descriptor %d", data, fd);
 	if (!IsOpened()) {return false;	}
 	long n = strlen(data);
 	if (n < 0) n = 0;

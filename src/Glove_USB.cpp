@@ -33,7 +33,7 @@ Glove_Ret Glove_USB::glove_usb_read(string& data, int size)
 		answer = serial_->ReadChar(ret);
 		if(ret == false)
 			return USB_READ_DATA_ERROR;
-		data.append(&answer);
+		data.push_back(answer);
 
 	}
 

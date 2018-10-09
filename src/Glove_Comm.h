@@ -21,9 +21,9 @@
 //#define ETX '\x03'
 
 #define SOH '#'
-#define EOT '\x04'
 #define STX '$'
 #define ETX '&'
+#define DELIMITER ';'
 
 namespace glove {
 
@@ -92,10 +92,15 @@ public:
 	/*!
 	 * @brief Function to activate the stimuli on the glove.
 	 *
-	 * @param state (bool) True for on. False for off.
+	 * @param state (int) 100 for on. 0 for off.
 	 * @return See #Glove_Ret
 	 */
-	Glove_Ret glove_send_stim(bool* state);
+	Glove_Ret glove_send_stim(int state);
+
+
+	Glove_Ret glove_set_motors(int fng1, int fng2, int fng3, int fng4, int fng5);
+
+	Glove_Ret glove_package_encode(string ID, void * content, string & payload);
 
 	Glove_Ret glove_startup();
 
