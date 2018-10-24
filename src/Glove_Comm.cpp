@@ -7,6 +7,8 @@
 
 #include "Glove_Comm.h"
 
+
+
 namespace glove {
 
 Glove_Comm::Glove_Comm(string comm_port)
@@ -280,3 +282,50 @@ Glove_Comm::~Glove_Comm() {
 }
 
 } /* namespace glove */
+
+
+glove::Glove_Comm* GloveDLL_Start()
+{
+	glove::Glove_Comm* obj = new glove::Glove_Comm();
+
+	return obj;
+}
+
+void GloveDLL_Destroy(glove::Glove_Comm* obj)
+{
+	delete obj;
+}
+
+void GloveDLL_StimFinger(glove::Glove_Comm* obj, int intensity)
+{
+	obj->glove_send_stim(intensity);
+}
+
+void GloveDLL_StimPalm(glove::Glove_Comm* obj, int intensity)
+{
+	obj->glove_set_motors(intensity, 0, 0, 0, 0);
+}
+
+int GloveDLL_FingerFlex(glove::Glove_Comm* obj, int index)
+{
+	int* fng1, fng2, fng3, fng4, fng5;
+	obj->glove_get_flex(fng1,fng2,fng3,fng4,fng5);
+	switch(index)
+	{
+	case 0:
+		return fng0;
+	case 1:
+		return fng1;
+	case 2:
+		return fng2;
+	case 3:
+		return fng3;
+	case 4:
+		return fng4;
+	default:
+		return 0;
+	}
+}
+
+
+

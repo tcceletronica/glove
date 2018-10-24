@@ -25,6 +25,8 @@
 #define ETX '&'
 #define DELIMITER ';'
 
+
+
 namespace glove {
 
 typedef struct Pose
@@ -115,5 +117,19 @@ private:
 };
 
 } /* namespace glove */
+
+extern "C" {
+glove::Glove_Comm* GloveDLL_Start();
+
+void GloveDLL_Destroy(glove::Glove_Comm* obj);
+
+void GloveDLL_StimFinger(glove::Glove_Comm* obj, int intensity);
+
+void GloveDLL_StimPalm(glove::Glove_Comm* obj, int intensity);
+
+int GloveDLL_FingerFlex(glove::Glove_Comm* obj, int index);
+
+}
+
 
 #endif /* SRC_GLOVE_COMM_H_ */
